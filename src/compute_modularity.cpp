@@ -12,14 +12,28 @@
 #include "igraph.hpp"
 
 
-std::string parse_options(int argc, char**argv)
+
+struct Params {
+  std::string input;
+  bool layered = false;
+  bool normalize = false;
+  bool random = false;
+  bool simplify = false;
+};
+
+Params parse_options(int argc, char**argv)
 {
   namespace po = boost::program_options;
   po::options_description desc("Allowed options");
   desc.add_options()
     ("help,h", "print this help message")
+    ("layered,l", "Layered, feed forward network (change the null model)")
+    ("normalize,n", "normalize by a random network")
+    ("random,r", "generate a random network")
+    ("simplify,s", "simplify the network before computing modularity (remove nodes that are not connected to IO)")
     ("input,i", po::value<std::string>(), "input file (dot)");
 
+  Params p;
   po::variables_map vm;
   try
   {
@@ -42,14 +56,25 @@ std::string parse_options(int argc, char**argv)
     std::cout << desc << std::endl;
     exit(0);
   }
-  return vm["input"].as<std::string>();
+  if (vm.count("layered"))
+    p.layered = true;
+  if (vm.count("random"))
+    p.random = true;
+  if (vm.count("normalize"))
+    p.normalize = true;
+  if (vm.count("simplify"))
+    p.simplify = true;
+  p.input = vm["input"].as<std::string>();
+  return p;
 }
 
 
 int main(int argc, char **argv)
 {
-  std::string f = parse_options(argc, argv);
-  igraph::graph_t g = igraph::load(f);
+  Params p = parse_options(argc, argv);
+  igraph::graph_t g = igraph::load(p.input);
+  if (p.simplify)
+    igraph::simplify(g);
   std::vector<std::vector<igraph::vertex_desc_t> > mods;
   float mod1 = mod::modules(g, mods);
   std::cout << "modularity (directed): " << mod1 << std::endl;

@@ -17,6 +17,18 @@
 // http://arxiv.org/pdf/0709.4500
 namespace mod
 {
+  // the null model used by Newman
+  struct StdNullModel {
+    template<typename G>
+    double operator()(const G& g,
+                    const typename G::vertex_descriptor& v1,
+                    const typename G::vertex_descriptor& v2) const {
+        size_t m = num_edges(g);
+        size_t k_i_in = in_degree(v1, g);
+        size_t k_j_out = out_degree(v2, g);
+        return k_i_in * k_j_out / (double) m;
+    }
+  };
 
   template<typename G1, typename G2>
   void convert_graph(const G1& src, G2& g,
@@ -51,8 +63,10 @@ namespace mod
     return false;
   }
 
-  template<typename G>
-  inline void _b_matrix(const G& g, gsl_matrix *& b)
+
+
+  template<typename G, typename NullModel>
+  inline void _b_matrix(const G& g, gsl_matrix *& b, const NullModel& null_model)
   {
 
     b = gsl_matrix_alloc(num_vertices(g), num_vertices(g));
@@ -66,7 +80,7 @@ namespace mod
       {
         size_t k_i_in = in_degree(v1, g);
         size_t k_j_out = out_degree(v2, g);
-        double b_ij = _linked(g, v1, v2) - k_i_in * k_j_out / (double) m;
+        double b_ij = _linked(g, v1, v2) - null_model(g, v1, v2);
         gsl_matrix_set(b, i, j, b_ij);
         ++j;
       }
@@ -203,8 +217,10 @@ namespace mod
   }
 
 
-  template<typename G>
-  float compute_modularity(const G& g, const std::vector<std::string>& modules)
+  template<typename G, typename NullModel>
+  float compute_modularity(const G& g,
+                           const std::vector<std::string>& modules,
+                           const NullModel& null_model)
   {
     double m = boost::num_edges(g);
     double q = 0.0;
@@ -218,7 +234,7 @@ namespace mod
         {
           size_t k_i_in = in_degree(v1, g);
           size_t k_j_out = out_degree(v2, g);
-          double b_ij = _linked(g, v1, v2) - k_i_in * k_j_out / (double) m;
+          double b_ij = _linked(g, v1, v2) - null_model(g, v1, v2);
           q += b_ij;
         }
         ++v2_i;
@@ -228,13 +244,15 @@ namespace mod
     return q / m;
   }
 
-  template<typename G>
-  inline void split(const G& g, std::vector<std::string>& modules)
+  template<typename G, typename NullModel>
+  inline void split(const G& g,
+                    std::vector<std::string>& modules,
+                    const NullModel& null_model)
   {
     size_t m = num_edges(g);
     gsl_matrix*b, *bbt;
 
-    _b_matrix(g, b);
+    _b_matrix(g, b, null_model);
     _bbt(b, bbt);
 
     size_t n = num_vertices(g);
@@ -315,12 +333,10 @@ namespace mod
   }
 
    // ALL the modules (high and low levels)
-  template<typename G>
-  double h_modules(
-    const G& g_origin,
-    std::vector<std::set<typename boost::graph_traits<G>::vertex_descriptor> >&
-    mods_r)
-  {
+  template<typename G, typename NullModel>
+  double h_modules(const G& g_origin,
+                   std::vector<std::set<typename boost::graph_traits<G>::vertex_descriptor> >& mods_r,
+                   const NullModel& null_model) {
     using namespace boost;
     typedef adjacency_list<vecS, vecS, bidirectionalS> graph_t;
     typedef graph_traits<graph_t>::vertex_descriptor vertex_desc_t;
@@ -332,7 +348,7 @@ namespace mod
 
     assert(num_vertices(g) != 0);
     std::vector<std::string> ids;
-    split(g, ids);
+    split(g, ids, null_model);
     typedef std::set<vertex_desc_t> vset_t;
     vset_t nodes;
 
@@ -342,7 +358,7 @@ namespace mod
     assert(nodes.size());
     _h_modules<graph_t>(nodes, ids, mods, 0);
 
-    float m = compute_modularity(g, ids);
+    float m = compute_modularity(g, ids, null_model);
      // create mod_r
     mods_r.resize(mods.size());
     for (size_t i = 0; i < mods.size(); ++i)
@@ -395,13 +411,13 @@ namespace mod
 
 
    // hierachical dot file (slow version)
-  template<typename G>
-  void write_modules(const G& g, std::ostream& os)
+  template<typename G, typename NullModel>
+  void write_modules(const G& g, std::ostream& os, const NullModel& null_model)
   {
     typedef std::vector<std::set<typename boost::graph_traits<G>::vertex_descriptor> >
     v_mod_t;
     v_mod_t mods_r;
-    h_modules(g, mods_r);
+    h_modules(g, mods_r, null_model);
     os << "digraph G {" << std::endl;
     _write_modules(g, mods_r, os);
     BGL_FORALL_EDGES_T(e, g, G)
@@ -418,13 +434,14 @@ namespace mod
    // post-processing : modules in a more convenient form (list of sets)
    // ONLY leaf-modules (not the 'higher-level' modules'
    // TODO : convert graph !
-  template<typename G>
+  template<typename G, typename NullModel=StdNullModel>
   inline double modules(
     const G& g,
-    std::vector<std::vector<typename boost::graph_traits<G>::vertex_descriptor> >& mods)
+    std::vector<std::vector<typename boost::graph_traits<G>::vertex_descriptor> >& mods,
+    const NullModel& null_model=StdNullModel())
   {
     std::vector<std::string> modules;
-    split(g, modules);
+    split(g, modules, null_model);
 
     typedef typename boost::graph_traits<G>::vertex_descriptor vertex_desc_t;
     typedef std::map<std::string, std::vector<vertex_desc_t> > m_map_t;
@@ -436,7 +453,8 @@ namespace mod
      // copy to res
     mods.resize(m_map.size());
     size_t k = 0;
-    for (typename m_map_t::const_iterator it = m_map.begin(); it != m_map.end();
+    for (typename m_map_t::const_iterator it = m_map.begin();
+         it != m_map.end();
          ++it)
     {
       BOOST_FOREACH(vertex_desc_t v, it->second)
@@ -444,7 +462,7 @@ namespace mod
       ++k;
     }
 
-    float q = compute_modularity(g, modules);
+    float q = compute_modularity(g, modules, null_model);
     return q;
   }
 }
