@@ -21,38 +21,32 @@ struct Params {
   bool simplify = false;
 };
 
-Params parse_options(int argc, char**argv)
-{
+Params parse_options(int argc, char**argv) {
   namespace po = boost::program_options;
   po::options_description desc("Allowed options");
   desc.add_options()
-    ("help,h", "print this help message")
-    ("layered,l", "Layered, feed forward network (change the null model)")
-    ("normalize,n", "normalize by a random network")
-    ("random,r", "generate a random network")
-    ("simplify,s", "simplify the network before computing modularity (remove nodes that are not connected to IO)")
-    ("input,i", po::value<std::string>(), "input file (dot)");
+  ("help,h", "print this help message")
+  ("layered,l", "Layered, feed forward network (change the null model)")
+  ("normalize,n", "normalize by a random network")
+  ("random,r", "generate a random network")
+  ("simplify,s", "simplify the network before computing modularity (remove nodes that are not connected to IO)")
+  ("input,i", po::value<std::string>(), "input file (dot)");
 
   Params p;
   po::variables_map vm;
-  try
-  {
+  try {
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
-  }
-  catch(po::error & e)
-  {
+  } catch (po::error & e) {
     std::cerr << "error: " << e.what() << std::endl;
     std::cerr << desc << std::endl;
     exit(1);
   }
-  if (!vm.count("input"))
-  {
+  if (!vm.count("input")) {
     std::cerr << "please specify an input file [-i]" << std::endl;
     exit(1);
   }
-  if (vm.count("help"))
-  {
+  if (vm.count("help")) {
     std::cout << desc << std::endl;
     exit(0);
   }
@@ -69,8 +63,7 @@ Params parse_options(int argc, char**argv)
 }
 
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   Params p = parse_options(argc, argv);
   igraph::graph_t g = igraph::load(p.input);
   if (p.simplify)
@@ -80,8 +73,7 @@ int main(int argc, char **argv)
   std::cout << "modularity (directed): " << mod1 << std::endl;
   std::cout << "number of modules:" << mods.size() << std::endl;
   std::cout << "modules:" << std::endl;
-  for (size_t i = 0; i < mods.size(); ++i)
-  {
+  for (size_t i = 0; i < mods.size(); ++i) {
     for (size_t j = 0; j < mods[i].size(); ++j)
       std::cout << g[mods[i][j]].get_id() << " ";
     std::cout << std::endl;

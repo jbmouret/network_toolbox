@@ -8,39 +8,32 @@
 
 
 
-std::pair<std::string, std::string> parse_options(int argc, char**argv)
-{
+std::pair<std::string, std::string> parse_options(int argc, char**argv) {
   namespace po = boost::program_options;
   po::options_description desc("Allowed options");
   desc.add_options()
-    ("help,h", "print this help message")
-    ("input,i", po::value<std::string>(), "input file (dot)")
-    ("output,o", po::value<std::string>(), "output file (svg)");
+  ("help,h", "print this help message")
+  ("input,i", po::value<std::string>(), "input file (dot)")
+  ("output,o", po::value<std::string>(), "output file (svg)");
 
   po::variables_map vm;
-  try
-  {
+  try {
     po::store(po::parse_command_line(argc, argv, desc), vm);
     po::notify(vm);
-  }
-  catch(po::error & e)
-  {
+  } catch (po::error & e) {
     std::cerr << "error: " << e.what() << std::endl;
     std::cerr << desc << std::endl;
     exit(1);
   }
-  if (!vm.count("output"))
-  {
+  if (!vm.count("output")) {
     std::cerr << "please specify an output file [-o]" << std::endl;
     exit(1);
   }
-  if (!vm.count("input"))
-  {
+  if (!vm.count("input")) {
     std::cerr << "please specify an input file [-i]" << std::endl;
     exit(1);
   }
-  if (vm.count("help"))
-  {
+  if (vm.count("help")) {
     std::cout << desc << std::endl;
     exit(0);
   }
@@ -48,8 +41,7 @@ std::pair<std::string, std::string> parse_options(int argc, char**argv)
                         vm["output"].as<std::string>());
 }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   auto r = parse_options(argc, argv);
   auto g = igraph::load(r.first);
   std::cout << "load ok" << std::endl;

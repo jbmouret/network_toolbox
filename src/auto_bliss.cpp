@@ -29,8 +29,7 @@
 
 #include "igraph.hpp"
 
-namespace gsym
-{
+namespace gsym {
 
   typedef unsigned char byte_t;
   typedef std::vector< std::pair<int, int> > gen_t;
@@ -46,27 +45,22 @@ namespace gsym
   static const byte_t TYPE_N = 101;
   static const byte_t TYPE_M = 102;
 
-  byte_t _color(float w)
-  {
+  byte_t _color(float w) {
     if (w <= -1)
       return NEG_LARGE;
-    else
-    if (w < 0)
+    else if (w < 0)
       return NEG_SMALL;
-    else
-    if (w < 1)
+    else if (w < 1)
       return POS_SMALL;
     else
       return POS_LARGE;
   }
 
 
-  byte_t _color_v(const std::string& type)
-  {
+  byte_t _color_v(const std::string& type) {
     if (type == "io")
       return TYPE_IO;
-    else
-    if (type == "m")
+    else if (type == "m")
       return TYPE_M;
     else return TYPE_N;
   }
@@ -74,19 +68,15 @@ namespace gsym
   std::vector<std::pair<int, int> >
   _make_generator(const unsigned int N,
                   const unsigned int*perm,
-                  const unsigned int offset)
-  {
+                  const unsigned int offset) {
     std::vector<std::pair<int, int> > res;
-    for (unsigned int i = 0; i < N; i++)
-    {
+    for (unsigned int i = 0; i < N; i++) {
       unsigned int j = perm[i];
       if (j == i)
         continue;
       bool is_first = true;
-      while (j != i)
-      {
-        if (j < i)
-        {
+      while (j != i) {
+        if (j < i) {
           is_first = false;
           break;
         }
@@ -95,8 +85,7 @@ namespace gsym
       if (!is_first)
         continue;
       j = perm[i];
-      while (j != i)
-      {
+      while (j != i) {
         res.push_back(std::make_pair(i + offset, j + offset));
         j = perm[j];
       }
@@ -104,8 +93,7 @@ namespace gsym
     return res;
   }
 
-  static void _report_aut(void *param, unsigned int n, const unsigned int *aut)
-  {
+  static void _report_aut(void *param, unsigned int n, const unsigned int *aut) {
     assert(param);
     std::vector<gen_t>*all = static_cast<std::vector<gen_t> *>(param);
     gen_t v = _make_generator(n, aut, 0);
@@ -115,11 +103,9 @@ namespace gsym
     std::cout << std::endl;
   }
 
-  std::vector<int> _apply_gen(const std::vector<int>& state, const gen_t& gen)
-  {
+  std::vector<int> _apply_gen(const std::vector<int>& state, const gen_t& gen) {
     std::vector<int> c = state;
-    for (size_t i = 0; i < gen.size(); ++i)
-    {
+    for (size_t i = 0; i < gen.size(); ++i) {
       c[gen[i].first] = gen[i].second;
       c[gen[i].second] = gen[i].first;
     }
@@ -127,8 +113,7 @@ namespace gsym
   }
 
   template<typename G>
-  void write(const std::string& fname, G& g)
-  {
+  void write(const std::string& fname, G& g) {
     using namespace boost;
     std::ofstream ofs(fname.c_str());
     assert(ofs.good());
@@ -145,34 +130,29 @@ namespace gsym
 
 
   template<typename G>
-  bliss::Digraph _convert(const G& g, bool use_weights = true)
-  {
+  bliss::Digraph _convert(const G& g, bool use_weights = true) {
     bliss::Digraph dg;
     std::map<typename G::vertex_descriptor, unsigned> mv;
 
-    BGL_FORALL_VERTICES_T(v, g, G)
-    {
+    BGL_FORALL_VERTICES_T(v, g, G) {
       std::cout << g[v].get_id() << std::endl;
       mv[v] = dg.add_vertex(_color_v(g[v].get_type()));
     }
-    BGL_FORALL_EDGES_T(e, g, G)
-    {
-      if (use_weights)
-      { // "virtual" node to carry the weight
+    BGL_FORALL_EDGES_T(e, g, G) {
+      if (use_weights) {
+        // "virtual" node to carry the weight
         unsigned v = dg.add_vertex(_color(g[e].get_weight()));
         dg.add_edge(mv[boost::source(e, g)], v);
         dg.add_edge(v, mv[boost::target(e, g)]);
-      }
-      else
+      } else
         dg.add_edge(mv[boost::source(e, g)], mv[boost::target(e, g)]);
     }
     return dg;
   }
 
   template<typename G>
-  double compute(const G& g)
-  {
-     // automorphisms and generators
+  double compute(const G& g) {
+    // automorphisms and generators
     bliss::Digraph dg = _convert(g, false);
     dg.set_splitting_heuristic(bliss::Digraph::shs_flm);
     bliss::Stats stats;
@@ -185,11 +165,10 @@ namespace gsym
     boost::unordered_set<std::vector<int> > res;
     std::cout << "res size:" << res.size() << std::endl;
 
-     //fixed points
+    //fixed points
     std::set<int> nfix;
     for (size_t i = 0; i < v.size(); ++i)
-      for (size_t j = 0; j < v[i].size(); ++j)
-      {
+      for (size_t j = 0; j < v[i].size(); ++j) {
         nfix.insert(v[i][j].first);
         nfix.insert(v[i][j].second);
       }
@@ -208,16 +187,11 @@ namespace gsym
   }
 }
 
-int main(int argc, char **argv)
-{
-  if (argc == 2)
-  {
+int main(int argc, char **argv) {
+  if (argc == 2) {
     igraph::graph_t g = igraph::load(argv[1]);
     std::cout << gsym::compute(g) << std::endl;
-  }
-  else
-  if (argc == 3)
-  {
+  } else if (argc == 3) {
     int num_vertices = boost::lexical_cast<int>(argv[1]);
     int num_edges = boost::lexical_cast<int>(argv[2]);
     boost::mt19937 gen(time(0));
@@ -225,9 +199,9 @@ int main(int argc, char **argv)
     boost::generate_random_graph(gr, num_vertices, num_edges, gen, false);
     std::cout << "(random graph)=>" << gsym::compute(gr) << std::endl;
     gsym::write("random.dot", gr);
+  } else {
+    assert(0);
   }
-  else
-  { assert(0); }
   return 0;
 }
 
