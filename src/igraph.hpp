@@ -86,7 +86,7 @@ namespace igraph {
   // the graph HAS TO be layered
   // you need to call simplify before !
   template<typename G>
-  std::map<typename G::vertex_descriptor, int> compute_layers(const G& g) {
+  static std::map<typename G::vertex_descriptor, int> compute_layers(const G& g) {
     using namespace boost;
     std::vector<vertex_desc_t> outputs;
     BGL_FORALL_VERTICES(v, g, graph_t)

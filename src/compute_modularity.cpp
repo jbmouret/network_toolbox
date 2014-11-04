@@ -15,12 +15,18 @@
 
 
 struct Params {
+  Params() :
+    layered(false),
+    normalize(false),
+    random(false),
+    simplify(false),
+    directed(false){ }
   std::string input;
-  bool layered = false;
-  bool normalize = false;
-  bool random = false;
-  bool simplify = false;
-  bool directed = true;
+  bool layered;
+  bool normalize;
+  bool random;
+  bool simplify;
+  bool directed;
 };
 
 Params parse_options(int argc, char**argv) {
