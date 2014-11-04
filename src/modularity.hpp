@@ -17,17 +17,73 @@
 // http://arxiv.org/pdf/0709.4500
 namespace mod {
   // the null model used by Newman
-  struct StdNullModel {
+  namespace null_model {
+    struct Directed {
+      template<typename G>
+      double operator()(const G& g,
+                        const typename G::vertex_descriptor& v1,
+                        const typename G::vertex_descriptor& v2) const {
+        size_t m = num_edges(g);
+        size_t k_i_in = in_degree(v1, g);
+        size_t k_j_out = out_degree(v2, g);
+        return k_i_in * k_j_out / (double) m;
+      }
+    };
+    struct Undirected {
+      template<typename G>
+      double operator()(const G& g,
+                        const typename G::vertex_descriptor& v1,
+                        const typename G::vertex_descriptor& v2) const {
+        size_t m = num_edges(g);
+        size_t k_i_in = degree(v1, g);
+        size_t k_j_out = degree(v2, g);
+        return k_i_in * k_j_out / (double) m;
+      }
+    };
+
+
     template<typename G>
-    double operator()(const G& g,
-                      const typename G::vertex_descriptor& v1,
-                      const typename G::vertex_descriptor& v2) const {
-      size_t m = num_edges(g);
-      size_t k_i_in = in_degree(v1, g);
-      size_t k_j_out = out_degree(v2, g);
-      return k_i_in * k_j_out / (double) m;
-    }
-  };
+    struct Layered {
+      typedef std::map<typename G::vertex_descriptor, int> map_t;
+      Layered(const G& g, const map_t & m) : _m(m) {
+        // find the max layer
+        int cm = -1;
+        for (typename map_t::const_iterator it = m.begin(); it != m.end(); ++it)
+          if (it->second > cm)
+            cm = it->second;
+        _layers.resize(cm + 1);
+        for (typename map_t::const_iterator it = m.begin(); it != m.end(); ++it)
+          _layers[it->second].push_back(it->first);
+        _num_edges.resize(_layers.size());
+        for (size_t i = 0; i < _layers.size(); ++i)
+          {
+            int k = 0;
+            for (size_t j = 0; j < _layers[i].size(); ++j)
+              k += out_degree(_layers[i][j], g);
+            _num_edges[i] = k;
+          }
+      }
+
+      double operator()(const G& g,
+                        const typename G::vertex_descriptor& v1,
+                        const typename G::vertex_descriptor& v2) const {
+        int k1 = _m.find(v1)->second;
+        int k2 = _m.find(v2)->second;
+        if (k1 <= k2)
+          return 0;
+        size_t m = _num_edges[k1];
+        size_t k_j_out = out_degree(v1, g);
+        size_t k_i_in = in_degree(v2, g);
+        return k_i_in * k_j_out / (double) m;
+      }
+      map_t _m;
+      std::vector<std::vector<typename G::vertex_descriptor> > _layers;
+      std::vector<int> _num_edges;
+    };
+  }
+
+
+
 
   template<typename G1, typename G2>
   void convert_graph(const G1& src, G2& g,
@@ -397,11 +453,11 @@ namespace mod {
   // post-processing : modules in a more convenient form (list of sets)
   // ONLY leaf-modules (not the 'higher-level' modules'
   // TODO : convert graph !
-  template<typename G, typename NullModel = StdNullModel>
+  template<typename G, typename NullModel>
   inline double modules(
     const G& g,
     std::vector<std::vector<typename boost::graph_traits<G>::vertex_descriptor> >& mods,
-    const NullModel& null_model = StdNullModel()) {
+    const NullModel& null_model) {
     std::vector<std::string> modules;
     split(g, modules, null_model);
 

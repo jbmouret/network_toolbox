@@ -1,9 +1,12 @@
 #ifndef IGRAPH_HPP_
 #define IGRAPH_HPP_
 
-
-#include <boost/program_options.hpp>
 #include <boost/graph/reverse_graph.hpp>
+#include <boost/graph/dijkstra_shortest_paths.hpp>
+#include <boost/graph/dag_shortest_paths.hpp>
+#include <boost/graph/visitors.hpp>
+#include <boost/property_map/vector_property_map.hpp>
+
 
 
 namespace igraph {
@@ -79,7 +82,57 @@ namespace igraph {
     return g;
   }
 
-// a useful boost functor
+
+  // the graph HAS TO be layered
+  // you need to call simplify before !
+  template<typename G>
+  std::map<typename G::vertex_descriptor, int> compute_layers(const G& g) {
+    using namespace boost;
+    std::vector<vertex_desc_t> outputs;
+    BGL_FORALL_VERTICES(v, g, graph_t)
+    if (g[v].get_out() != -1)
+      outputs.push_back(v);
+
+    typedef reverse_graph<G> r_graph_t;
+    typedef std::map<vertex_desc_t, size_t> int_map_t;
+    typedef std::map<vertex_desc_t, vertex_desc_t> vertex_map_t;
+    typedef std::map<vertex_desc_t, default_color_type> color_map_t;
+    typedef std::map<edge_desc_t, int> edge_map_t;
+    typedef associative_property_map<int_map_t> a_map_t;
+    typedef associative_property_map<color_map_t> c_map_t;
+    typedef associative_property_map<vertex_map_t> v_map_t;
+    typedef associative_property_map<edge_map_t> e_map_t;
+
+    std::map<vertex_desc_t, int> res;
+
+    BGL_FORALL_VERTICES(s, g, graph_t) {
+      color_map_t cm; c_map_t cmap(cm);
+      vertex_map_t vm; v_map_t pmap(vm);
+      edge_map_t em;
+      BGL_FORALL_EDGES_T(e, g, graph_t) {
+        em[e] = 1;
+      }
+      e_map_t wmap(em);
+      int_map_t im;
+      a_map_t dmap(im);
+      dag_shortest_paths
+      (g, s, dmap, wmap, cmap, pmap,
+       dijkstra_visitor<null_visitor>(),
+       std::greater<int>(),
+       closed_plus<int>(),
+       std::numeric_limits<int>::min(), 0);
+       BOOST_FOREACH(vertex_desc_t o, outputs) {
+        if (get(dmap, o) != std::numeric_limits<int>::min())
+          res[s] = get(dmap, o);
+      }
+    }
+
+    BGL_FORALL_VERTICES_T(v, g, graph_t) {
+      std::cout << g[v]._label << " -> " << res[v] << std::endl;
+    }
+    return res;
+  }
+
   template<typename V>
   class bfs_pred_visitor : public boost::default_bfs_visitor {
    public:

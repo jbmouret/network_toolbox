@@ -19,7 +19,7 @@ def configure(conf):
 
 #    conf.env.SHLIB_MARKER="-Wl,-Bstatic"
     conf.env.append_value('LINKFLAGS', ['-pthread'])
-    conf.env.append_value('CXXFLAGS', ['-O3', '-pthread', '-std=gnu++0x'])
+    conf.env.append_value('CXXFLAGS', ['-g', '-std=gnu++0x'])
     conf.load('eigen')
     conf.check_eigen()
     conf.env['LIB_BLISS']='bliss'

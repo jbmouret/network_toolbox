@@ -1,6 +1,7 @@
 // code (c) J.-B. Mouret - mouret@isir.upmc.fr
 // GPL licence
 #include <fstream>
+#include <boost/program_options.hpp>
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/properties.hpp>
 #include <boost/graph/random.hpp>
@@ -19,6 +20,7 @@ struct Params {
   bool normalize = false;
   bool random = false;
   bool simplify = false;
+  bool directed = true;
 };
 
 Params parse_options(int argc, char**argv) {
@@ -26,7 +28,9 @@ Params parse_options(int argc, char**argv) {
   po::options_description desc("Allowed options");
   desc.add_options()
   ("help,h", "print this help message")
-  ("layered,l", "Layered, feed forward network (change the null model)")
+  ("layered,l", "Directed, layered, feed forward network (change the null model)")
+  ("directed,d", "Directed network")
+  ("undirected,u", "Undirected network")
   ("normalize,n", "normalize by a random network")
   ("random,r", "generate a random network")
   ("simplify,s", "simplify the network before computing modularity (remove nodes that are not connected to IO)")
@@ -50,14 +54,21 @@ Params parse_options(int argc, char**argv) {
     std::cout << desc << std::endl;
     exit(0);
   }
-  if (vm.count("layered"))
+  if (vm.count("layered")) {
     p.layered = true;
+    p.simplify = true;
+  }
   if (vm.count("random"))
     p.random = true;
   if (vm.count("normalize"))
     p.normalize = true;
   if (vm.count("simplify"))
     p.simplify = true;
+  if (vm.count("directed"))
+    p.directed = true;
+  if (vm.count("undirected"))
+    p.directed = false;
+
   p.input = vm["input"].as<std::string>();
   return p;
 }
@@ -69,9 +80,17 @@ int main(int argc, char **argv) {
   if (p.simplify)
     igraph::simplify(g);
   std::vector<std::vector<igraph::vertex_desc_t> > mods;
-  float mod1 = mod::modules(g, mods);
-  std::cout << "modularity (directed): " << mod1 << std::endl;
-  std::cout << "number of modules:" << mods.size() << std::endl;
+  double mod1 = -1;
+  if (p.layered) {
+    std::map<igraph::vertex_desc_t, int> layers = igraph::compute_layers(g);
+    mod1 = mod::modules(g, mods, mod::null_model::Layered<igraph::graph_t>(g, layers));
+  } else if (p.directed)
+    mod1 = mod::modules(g, mods, mod::null_model::Directed());
+  else
+    mod1 = mod::modules(g, mods, mod::null_model::Undirected());
+
+  std::cout << "modularity: " << mod1 << std::endl;
+  std::cout << "number of modules:"  << mods.size() << std::endl;
   std::cout << "modules:" << std::endl;
   for (size_t i = 0; i < mods.size(); ++i) {
     for (size_t j = 0; j < mods[i].size(); ++j)

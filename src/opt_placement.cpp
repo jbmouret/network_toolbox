@@ -1,5 +1,6 @@
 // code (c) J.-B. Mouret - mouret@isir.upmc.fr
 // GPL licence
+#include <boost/program_options.hpp>
 #include <fstream>
 #include <cstdlib>
 
@@ -52,4 +53,3 @@ int main(int argc, char **argv) {
   std::cout << r.second << " successfully written" << std::endl;
   return 0;
 }
-
