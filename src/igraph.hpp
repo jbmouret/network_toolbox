@@ -82,6 +82,26 @@ namespace igraph {
     return g;
   }
 
+  template<typename G>
+  static void write(const G& g, std::ostream& ofs) {
+    ofs << "digraph G {" << std::endl;
+    BGL_FORALL_VERTICES_T(v, g, G) {
+      ofs << g[v].get_id();
+      ofs << " [label=\"" << g[v].get_id() << "\"";
+      ofs << "]" << std::endl;
+    }
+    BGL_FORALL_EDGES_T(e, g, G) {
+      ofs << g[source(e, g)].get_id()
+          << " -> "
+          << g[target(e, g)].get_id()
+          << "[label=\"" << g[e].get_weight() << "\"]"
+          << std::endl;
+    }
+    ofs << "}" << std::endl;
+  }
+
+
+
 
   // the graph HAS TO be layered
   // you need to call simplify before !
