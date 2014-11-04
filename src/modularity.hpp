@@ -15,9 +15,10 @@
 // Community Structure in Directed Networks
 // EA Leicht, MEJ Newman - Physical Review Letters, 2008 - APS
 // http://arxiv.org/pdf/0709.4500
+
 namespace mod {
-  // the null model used by Newman
   namespace null_model {
+    // the null model used by Leicht
     struct Directed {
       template<typename G>
       double operator()(const G& g,
@@ -29,6 +30,8 @@ namespace mod {
         return k_i_in * k_j_out / (double) m;
       }
     };
+
+    // the null model used by Newman
     struct Undirected {
       template<typename G>
       double operator()(const G& g,
@@ -41,7 +44,9 @@ namespace mod {
       }
     };
 
-
+    // for layered networks (e.g. multi-layer perceptron)
+    // the map contains the id of the layer for each node
+    // WARNING: the last layer is 0!
     template<typename G>
     struct Layered {
       typedef std::map<typename G::vertex_descriptor, int> map_t;
@@ -55,13 +60,12 @@ namespace mod {
         for (typename map_t::const_iterator it = m.begin(); it != m.end(); ++it)
           _layers[it->second].push_back(it->first);
         _num_edges.resize(_layers.size());
-        for (size_t i = 0; i < _layers.size(); ++i)
-          {
-            int k = 0;
-            for (size_t j = 0; j < _layers[i].size(); ++j)
-              k += out_degree(_layers[i][j], g);
-            _num_edges[i] = k;
-          }
+        for (size_t i = 0; i < _layers.size(); ++i) {
+          int k = 0;
+          for (size_t j = 0; j < _layers[i].size(); ++j)
+            k += out_degree(_layers[i][j], g);
+          _num_edges[i] = k;
+        }
       }
 
       double operator()(const G& g,
@@ -81,9 +85,6 @@ namespace mod {
       std::vector<int> _num_edges;
     };
   }
-
-
-
 
   template<typename G1, typename G2>
   void convert_graph(const G1& src, G2& g,

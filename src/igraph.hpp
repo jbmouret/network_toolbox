@@ -106,8 +106,10 @@ namespace igraph {
     std::map<vertex_desc_t, int> res;
 
     BGL_FORALL_VERTICES(s, g, graph_t) {
-      color_map_t cm; c_map_t cmap(cm);
-      vertex_map_t vm; v_map_t pmap(vm);
+      color_map_t cm;
+      c_map_t cmap(cm);
+      vertex_map_t vm;
+      v_map_t pmap(vm);
       edge_map_t em;
       BGL_FORALL_EDGES_T(e, g, graph_t) {
         em[e] = 1;
@@ -121,7 +123,7 @@ namespace igraph {
        std::greater<int>(),
        closed_plus<int>(),
        std::numeric_limits<int>::min(), 0);
-       BOOST_FOREACH(vertex_desc_t o, outputs) {
+      BOOST_FOREACH(vertex_desc_t o, outputs) {
         if (get(dmap, o) != std::numeric_limits<int>::min())
           res[s] = get(dmap, o);
       }
