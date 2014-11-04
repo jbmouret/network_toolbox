@@ -12,7 +12,8 @@
 namespace igraph {
 
   struct Node {
-    Node() {
+    Node() :
+    _id(_rand_id()) {
     }
     const std::string& get_id() const {
       return _id;
@@ -44,9 +45,14 @@ namespace igraph {
       std::string k = _label.substr(1, _label.size() - 1);
       return boost::lexical_cast<int>(k);
     }
+    std::string _rand_id() const {
+      unsigned r = rand();
+      return boost::lexical_cast<std::string>(r);
+    }
   };
 
   struct Connection {
+    Connection() : _weight(std::rand() / ((float) RAND_MAX + 1)) {}
     float _weight;
     float get_weight() const {
       return _weight;
@@ -99,9 +105,6 @@ namespace igraph {
     }
     ofs << "}" << std::endl;
   }
-
-
-
 
   // the graph HAS TO be layered
   // you need to call simplify before !
