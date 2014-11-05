@@ -8,6 +8,7 @@
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphviz.hpp>
 #include <boost/graph/iteration_macros.hpp>
+#include <boost/random.hpp>
 
 #include "modularity.hpp"
 #include "igraph.hpp"
@@ -20,13 +21,14 @@ struct Params {
     normalize(false),
     random(false),
     simplify(false),
-    directed(false){ }
+    directed(false) { }
   std::string input;
   bool layered;
   bool normalize;
   bool random;
   bool simplify;
   bool directed;
+  int num_vertices, num_edges;
 };
 
 Params parse_options(int argc, char**argv) {
@@ -38,7 +40,7 @@ Params parse_options(int argc, char**argv) {
   ("directed,d", "Directed network")
   ("undirected,u", "Undirected network")
   ("normalize,n", "normalize by a random network")
-  ("random,r", "generate a random network")
+  ("random,r",  po::value<std::vector<int> >()->multitoken(), "generate a random network with N vertices and K edges")
   ("simplify,s", "simplify the network before computing modularity (remove nodes that are not connected to IO)")
   ("input,i", po::value<std::string>(), "input file (dot)");
 
@@ -64,8 +66,11 @@ Params parse_options(int argc, char**argv) {
     p.layered = true;
     p.simplify = true;
   }
-  if (vm.count("random"))
+  if (vm.count("random")) {
     p.random = true;
+    p.num_vertices = vm["random"].as<std::vector<int> >()[0];
+    p.num_edges = vm["random"].as<std::vector<int> >()[1];
+  }
   if (vm.count("normalize"))
     p.normalize = true;
   if (vm.count("simplify"))
@@ -80,11 +85,24 @@ Params parse_options(int argc, char**argv) {
 }
 
 
+
 int main(int argc, char **argv) {
+  srand(time(0));
   Params p = parse_options(argc, argv);
-  igraph::graph_t g = igraph::load(p.input);
+  igraph::graph_t g;
+  if (p.random) {
+    boost::mt19937 gen(time(0));
+    std::cout << "generating a random graph with "
+              << p.num_vertices <<  " vertices and "
+              << p.num_edges << " edges" << std::endl;
+    boost::generate_random_graph(g, p.num_vertices, p.num_edges, gen, false);
+    std::ofstream ofs("test.dot");
+    igraph::write(g, ofs);
+  } else
+    g = igraph::load(p.input);
   if (p.simplify)
     igraph::simplify(g);
+
   std::vector<std::vector<igraph::vertex_desc_t> > mods;
   double mod1 = -1;
   if (p.layered) {
@@ -95,7 +113,19 @@ int main(int argc, char **argv) {
   else
     mod1 = mod::modules(g, mods, mod::null_model::Undirected());
 
-  std::cout << "modularity: " << mod1 << std::endl;
+  double q_max, q_rand;
+  if (p.normalize && p.layered)
+    std::tie(q_rand, q_max) = mod::random_feedforward(g);
+  else if (p.normalize && p.directed)
+    std::tie(q_rand, q_max) = mod::random(g, mod::null_model::Directed());
+  else if (p.normalize)
+    std::tie(q_rand, q_max) = mod::random(g, mod::null_model::Undirected());
+
+  std::cout << std::endl << "modularity: " << mod1 << std::endl;
+  std::cout << "q rand:" << q_rand << std::endl;
+  std::cout << "q max:" << q_max << std::endl;
+  std::cout << "normalized modularity: " << (mod1 - q_rand)  / (q_max - q_rand) << std::endl;
+
   std::cout << "number of modules:"  << mods.size() << std::endl;
   std::cout << "modules:" << std::endl;
   for (size_t i = 0; i < mods.size(); ++i) {

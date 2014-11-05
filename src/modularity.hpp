@@ -12,6 +12,8 @@
 #include <gsl/gsl_matrix.h>
 #include <gsl/gsl_blas.h>
 
+#include "igraph.hpp"
+
 // Community Structure in Directed Networks
 // EA Leicht, MEJ Newman - Physical Review Letters, 2008 - APS
 // http://arxiv.org/pdf/0709.4500
@@ -320,14 +322,6 @@ namespace mod {
   }
 
   template<typename G>
-  inline double modularity(const G& g) {
-    std::vector<std::vector<typename boost::graph_traits<G>::vertex_descriptor> > mods;
-    return modules(g, mods);
-  }
-
-
-
-  template<typename G>
   void _h_modules(const std::set<typename boost::graph_traits<G>::vertex_descriptor>& nodes,
                   const std::vector<std::string>& ids,
                   std::vector<std::set<typename boost::graph_traits<G>::vertex_descriptor> >& mods,
@@ -483,6 +477,105 @@ namespace mod {
     float q = compute_modularity(g, modules, null_model);
     return q;
   }
+
+  template<typename G, typename NullModel>
+  inline double modularity(const G& g, const NullModel& null_model) {
+    std::vector<std::vector<typename boost::graph_traits<G>::vertex_descriptor> > mods;
+    return modules(g, mods, null_model);
+  }
+
+
+
+  template<typename G, typename NullModel>
+  std::pair<double, double> random(const G& g, const NullModel& null_model,
+                                   size_t k = 1000, size_t k2 = 50) {
+    using namespace boost;
+    typedef typename boost::graph_traits<G>::edge_descriptor edge_desc_t;
+    typedef typename boost::graph_traits<G>::vertex_descriptor vertex_desc_t;
+
+    double m = 0;
+    double mm = 0;
+    for (size_t i = 0; i < k; ++i) {
+      if (i % 100 == 0) {
+        std::cout << "[" << i << "] ";
+        std::cout.flush();
+      }
+      G rg = g;
+      for (size_t j = 0; j < num_vertices(rg) * k2; ++j) {
+        edge_desc_t e1 = igraph::random_edge(rg);
+        edge_desc_t e2 = igraph::random_edge(rg);
+        if (e1 == e2)
+          continue;
+        vertex_desc_t src_1 = source(e1, rg);
+        vertex_desc_t src_2 = source(e2, rg);
+        vertex_desc_t tgt_1 = target(e1, rg);
+        vertex_desc_t tgt_2 = target(e2, rg);
+        remove_edge(e1, rg);
+        remove_edge(e2, rg);
+        add_edge(src_1, tgt_2, rg);
+        add_edge(src_2, tgt_1, rg);
+      }
+      double q = modularity(rg, null_model);
+      m += q;
+      mm = std::max(mm, q);
+    }
+    return std::make_pair(m / k, mm);
+  }
+
+
+  // the source network (g) has to be layered!
+  template<typename G>
+  std::pair<double, double> random_feedforward(const G& g, size_t k = 1000, size_t k2 = 50) {
+    using namespace boost;
+    typedef typename boost::graph_traits<G>::edge_descriptor edge_desc_t;
+    typedef typename boost::graph_traits<G>::vertex_descriptor vertex_desc_t;
+    typedef std::map<typename G::vertex_descriptor, int> map_t;
+    // reconstruct layers
+    map_t layer_map_g = compute_layers(g);
+    int cm = -1;
+    for (typename map_t::const_iterator it = layer_map_g.begin(); it != layer_map_g.end(); ++it)
+      if (it->second > cm)
+        cm = it->second;
+    std::vector<std::vector<edge_desc_t> > edge_list(cm);
+    double m = 0;
+    double mm = 0;
+
+    for (size_t i = 0; i < k; ++i) {
+      if (i % 100 == 0) {
+        std::cout << "[" << i << "] ";
+        std::cout.flush();
+      }
+      G rg = g;
+      map_t layer_map = compute_layers(rg);
+
+      for (size_t j = 0; j < num_vertices(rg) * k; ++j) {
+        for (size_t t = 0; t < edge_list.size(); ++t)
+          edge_list[t].clear();
+        BGL_FORALL_EDGES_T(e, rg, G)
+        edge_list[cm - layer_map[source(e, rg)]].push_back(e);
+        int n = igraph::misc::rand<int>(0, edge_list.size());
+        int r1 = igraph::misc::rand<int>(0, edge_list[n].size());
+        int r2 = igraph::misc::rand<int>(0, edge_list[n].size());
+        edge_desc_t e1 = edge_list[n][r1];
+        edge_desc_t e2 = edge_list[n][r2];
+        if (e1 == e2)
+          continue;
+        vertex_desc_t src_1 = source(e1, rg);
+        vertex_desc_t src_2 = source(e2, rg);
+        vertex_desc_t tgt_1 = target(e1, rg);
+        vertex_desc_t tgt_2 = target(e2, rg);
+        remove_edge(e1, rg);
+        remove_edge(e2, rg);
+        add_edge(src_1, tgt_2, rg);
+        add_edge(src_2, tgt_1, rg);
+      }
+      double q = modularity(rg, null_model::Layered<igraph::graph_t>(rg, layer_map));
+      m += q;
+      mm = std::max(mm, q);
+    }
+    return std::make_pair(m / k, mm);
+  }
+
 }
 
 #endif

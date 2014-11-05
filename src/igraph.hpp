@@ -13,7 +13,7 @@ namespace igraph {
 
   struct Node {
     Node() :
-    _id(_rand_id()) {
+      _id(_rand_id()) {
     }
     const std::string& get_id() const {
       return _id;
@@ -106,6 +106,59 @@ namespace igraph {
     ofs << "}" << std::endl;
   }
 
+// NOT Thread-safe !
+  namespace misc {
+    template<typename T>
+    inline T rand(T max = 1.0) {
+      assert(max > 0);
+      T v;
+      do
+        v = T(((double)max * ::rand()) / (RAND_MAX + 1.0));
+      while (v >= max); // this strange case happened... precision problem?
+      assert(v < max);
+      return v;
+    }
+
+
+    template<typename T>
+    inline T rand(T min, T max) {
+      assert(max != min);
+      assert(max > min);
+      T res = T(rand<double>() * ((long int) max - (long int) min) + min);
+      assert(res >= min);
+      assert(res < max);
+      return res;
+    }
+
+  }
+  template <typename G>
+  typename boost::graph_traits<G>::vertex_descriptor
+  random_vertex(G& g) {
+    using namespace boost;
+    if (num_vertices(g) > 1) {
+      std::size_t n = misc::rand(num_vertices(g));
+      typename graph_traits<G>::vertex_iterator i = vertices(g).first;
+      while (n-- > 0) ++i;
+      return *i;
+    } else
+      return *vertices(g).first;
+  }
+
+  template <class G>
+  typename boost::graph_traits<G>::edge_descriptor
+  random_edge(G& g) {
+    using namespace boost;
+    if (num_edges(g) > 1) {
+      std::size_t n = misc::rand(num_edges(g));
+      typename graph_traits<G>::edge_iterator i = edges(g).first;
+      while (n-- > 0) ++i;
+      return *i;
+    } else
+      return *edges(g).first;
+  }
+
+
+
   // the graph HAS TO be layered
   // you need to call simplify before !
   template<typename G>
@@ -150,10 +203,6 @@ namespace igraph {
         if (get(dmap, o) != std::numeric_limits<int>::min())
           res[s] = get(dmap, o);
       }
-    }
-
-    BGL_FORALL_VERTICES_T(v, g, graph_t) {
-      std::cout << g[v]._label << " -> " << res[v] << std::endl;
     }
     return res;
   }
