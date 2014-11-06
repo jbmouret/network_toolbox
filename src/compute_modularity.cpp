@@ -21,7 +21,9 @@ struct Params {
     normalize(false),
     random(false),
     simplify(false),
-    directed(false) { }
+    directed(false),
+    num_random(1000),
+    num_mut(50) { }
   std::string input;
   bool layered;
   bool normalize;
@@ -29,6 +31,7 @@ struct Params {
   bool simplify;
   bool directed;
   int num_vertices, num_edges;
+  int num_random, num_mut;
 };
 
 Params parse_options(int argc, char**argv) {
@@ -39,7 +42,7 @@ Params parse_options(int argc, char**argv) {
   ("layered,l", "Directed, layered, feed forward network (change the null model)")
   ("directed,d", "Directed network")
   ("undirected,u", "Undirected network")
-  ("normalize,n", "normalize by a random network")
+  ("normalize,n",  po::value<std::vector<int> >()->multitoken(), "normalize by a random network [params: number_of_random_networks number_of_edge_swaps]")
   ("random,r",  po::value<std::vector<int> >()->multitoken(), "generate a random network with N vertices and K edges")
   ("simplify,s", "simplify the network before computing modularity (remove nodes that are not connected to IO)")
   ("input,i", po::value<std::string>(), "input file (dot)");
@@ -71,8 +74,11 @@ Params parse_options(int argc, char**argv) {
     p.num_vertices = vm["random"].as<std::vector<int> >()[0];
     p.num_edges = vm["random"].as<std::vector<int> >()[1];
   }
-  if (vm.count("normalize"))
+  if (vm.count("normalize")) {
     p.normalize = true;
+    p.num_random = vm["normalize"].as<std::vector<int> >()[0];
+    p.num_mut = vm["normalize"].as<std::vector<int> >()[1];
+  }
   if (vm.count("simplify"))
     p.simplify = true;
   if (vm.count("directed"))
@@ -115,11 +121,11 @@ int main(int argc, char **argv) {
 
   double q_max, q_rand;
   if (p.normalize && p.layered)
-    std::tie(q_rand, q_max) = mod::random_feedforward(g);
+    std::tie(q_rand, q_max) = mod::random_feedforward(g, p.num_random, p.num_mut);
   else if (p.normalize && p.directed)
-    std::tie(q_rand, q_max) = mod::random(g, mod::null_model::Directed());
+    std::tie(q_rand, q_max) = mod::random(g, mod::null_model::Directed(), p.num_random, p.num_mut);
   else if (p.normalize)
-    std::tie(q_rand, q_max) = mod::random(g, mod::null_model::Undirected());
+    std::tie(q_rand, q_max) = mod::random(g, mod::null_model::Undirected(), p.num_random, p.num_mut);
 
   std::cout << std::endl << "modularity: " << mod1 << std::endl;
   std::cout << "q rand:" << q_rand << std::endl;
