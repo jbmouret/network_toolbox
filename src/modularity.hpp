@@ -268,8 +268,6 @@ namespace mod {
       size_t v2_i = 0;
       BGL_FORALL_VERTICES_T(v2, g, G) {
         if (modules[v1_i] == modules[v2_i]) {
-          size_t k_i_in = in_degree(v1, g);
-          size_t k_j_out = out_degree(v2, g);
           double b_ij = _linked(g, v1, v2) - null_model(g, v1, v2);
           q += b_ij;
         }
