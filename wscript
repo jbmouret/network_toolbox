@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 VERSION='0.0.1'
-APPNAME='modularity'
+APPNAME='network_toolbox'
 
 srcdir = '.'
 blddir = 'build'
@@ -11,11 +11,13 @@ def options(opt):
     opt.load('compiler_cxx boost')
     opt.load('boost')
     opt.load('eigen')
+    opt.load('xcode')
 
 def configure(conf):
     conf.load('compiler_cxx')
     conf.check_cfg(path='gsl-config', package='gsl', uselib_store='GSL', args='--cflags --libs')
     conf.check_boost(lib='graph regex program_options')
+    conf.load('xcode')
 
 #    conf.env.SHLIB_MARKER="-Wl,-Bstatic"
     conf.env.append_value('LINKFLAGS', ['-pthread'])
@@ -28,12 +30,4 @@ def configure(conf):
     print conf.env['CPPPATH_EIGEN']
 
 def build(bld):
-    bld.program(source ='src/compute_modularity.cpp',
-                target ='compute_modularity',
-                use = ['GSL', 'BOOST'])
-    bld.program(source ='src/opt_placement.cpp',
-                target ='opt_placement',
-                use = ['BOOST', 'EIGEN'])
-    bld.program(source ='src/auto_bliss.cpp',
-                target ='auto_bliss',
-                use = ['BOOST', 'EIGEN', 'BLISS', 'GMP'])
+    bld.recurse('src/')

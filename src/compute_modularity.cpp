@@ -13,8 +13,6 @@
 #include "modularity.hpp"
 #include "igraph.hpp"
 
-
-
 struct Params {
   Params() :
     layered(false),
@@ -139,5 +137,6 @@ int main(int argc, char **argv) {
       std::cout << g[mods[i][j]].get_id() << " ";
     std::cout << std::endl;
   }
+
   return 0;
 }

@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+# encoding: utf-8
+def build(bld):
+ bld.program(source ='compute_modularity.cpp',
+             target ='compute_modularity',
+            use = ['GSL', 'BOOST'])
+ bld.program(source ='opt_placement.cpp',
+             target ='opt_placement',
+             use = ['BOOST', 'EIGEN'])
+ bld.program(source ='auto_bliss.cpp',
+             target ='auto_bliss',
+             use = ['BOOST', 'EIGEN', 'BLISS', 'GMP'])
