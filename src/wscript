@@ -3,10 +3,13 @@
 def build(bld):
  bld.program(source ='compute_modularity.cpp',
              target ='compute_modularity',
-            use = ['GSL', 'BOOST'])
+             includes='.',
+             use = ['GSL', 'BOOST'])
  bld.program(source ='opt_placement.cpp',
              target ='opt_placement',
+             includes='.',
              use = ['BOOST', 'EIGEN'])
  bld.program(source ='auto_bliss.cpp',
              target ='auto_bliss',
+             includes='.',
              use = ['BOOST', 'EIGEN', 'BLISS', 'GMP'])

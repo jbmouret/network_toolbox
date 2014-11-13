@@ -17,7 +17,6 @@
 // Community Structure in Directed Networks
 // EA Leicht, MEJ Newman - Physical Review Letters, 2008 - APS
 // http://arxiv.org/pdf/0709.4500
-
 namespace mod {
   namespace null_model {
     // the null model used by Leicht

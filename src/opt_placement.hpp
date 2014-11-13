@@ -12,6 +12,7 @@
 #include <Eigen/Core>
 #include <Eigen/LU>
 
+
 namespace opt_placement {
   template<typename G>
   inline bool _linked(const G& g,

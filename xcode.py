@@ -162,11 +162,11 @@ class PBXLegacyTarget(XCodeNode):
 		XCodeNode.__init__(self)
 		self.buildConfigurationList = XCConfigurationList([XCBuildConfiguration('waf', {})])
 		if not target:
-			self.buildArgumentsString = "%s %s" % (sys.argv[0], action)
+			self.buildArgumentsString = "%s %s" % ("waf_xcode.sh", action)
 		else:
-			self.buildArgumentsString = "%s %s --targets=%s" % (sys.argv[0], action, target)
+			self.buildArgumentsString = "%s %s --targets=%s" % ("waf_xcode.sh", action, target)
 		self.buildPhases = []
-		self.buildToolPath = sys.executable
+		self.buildToolPath = "/bin/bash" #sys.executable
 		self.buildWorkingDirectory = ""
 		self.dependencies = []
 		self.name = target or action
@@ -236,10 +236,19 @@ class PBXProject(XCodeNode):
 			self.targets.append(target)
 			self._output.children.append(target.productReference)
 
+
+def create_shell_script():
+        cwd = os.getcwd()
+        waf_bin = cwd + '/waf'
+        src_dir = cwd + '/src'
+        f = open("waf_xcode.sh", 'w+')
+        f.write('(' +  waf_bin + ' $1 ) 2> >( sed -E "s|../src/([^/][a-zA-Z/_]+\\.cpp)|' + src_dir + '/\\1|g;s|../src/([^/][a-zA-Z/_]+\\.hpp)|' + src_dir + '/\\1|g" >&2 )')
+        f.close()
+
 class xcode(Build.BuildContext):
 	cmd = 'xcode'
 	fun = 'build'
-
+        create_shell_script()
 	def collect_source(self, tg):
 		source_files = tg.to_nodes(getattr(tg, 'source', []))
 		plist_files = tg.to_nodes(getattr(tg, 'mac_plist', []))
